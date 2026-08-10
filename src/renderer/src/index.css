@@ -1,0 +1,51 @@
+/* Tailwind v4 — tek satırlık import yeterli.
+   v3'teki '@tailwind base/components/utilities' üçlüsü ve tailwind.config.js
+   YOK; tasarım token'ları artık aşağıdaki @theme bloğunda yaşıyor. */
+@import 'tailwindcss';
+
+@theme {
+  /* Koyu tema paleti. Bu token'lar hem Tailwind utility'lerini
+     (bg-surface, text-ink gibi) hem de CodeMirror temasını besliyor —
+     editör teması app'in sorumluluğunda (SPEC §2 iş bölümü). */
+  --color-surface: #1e1e2e;
+  --color-surface-raised: #282a36;
+  --color-surface-sunken: #181825;
+  --color-border-subtle: #313244;
+
+  --color-ink: #cdd6f4;
+  --color-ink-muted: #7f849c;
+  --color-ink-faint: #585b70;
+
+  --color-accent: #89b4fa;
+
+  /* Durum renkleri — bağlantı noktası ve senkron göstergesi */
+  --color-state-ok: #a6e3a1;
+  --color-state-pending: #f9e2af;
+  --color-state-down: #f38ba8;
+
+  /* Sözdizimi renkleri (CodeMirror HighlightStyle bunları okur) */
+  --color-syntax-keyword: #cba6f7;
+  --color-syntax-string: #a6e3a1;
+  --color-syntax-number: #fab387;
+  --color-syntax-comment: #6c7086;
+  --color-syntax-function: #89b4fa;
+  --color-syntax-variable: #f5e0dc;
+  --color-syntax-type: #f9e2af;
+  --color-syntax-operator: #94e2d5;
+
+  --font-mono:
+    'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  overflow: hidden;
+}

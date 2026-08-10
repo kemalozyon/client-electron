@@ -63,10 +63,29 @@ export function useCollab(room: string, paneName: PaneName): CollabState {
 
     // y-codemirror.next uzak imleçleri tam olarak bu alan şeklinden okuyor.
     // (SPEC §7.3)
-    awareness.setLocalStateField('user', {
-      name: paneName,
-      ...PANE_COLORS[paneName]
-    })
+    const announce = (): void => {
+      awareness.setLocalStateField('user', {
+        name: paneName,
+        ...PANE_COLORS[paneName]
+      })
+    }
+    announce()
+
+    // Presence'ı periyodik olarak yeniden duyuruyoruz.
+    //
+    // NEDEN: sunucu awareness'ı yalnızca RELAY ediyor — YRoom.serve() sadece
+    // SYNC ve AWARENESS mesajlarını işliyor, biriktirdiği durumu yeni bağlanan
+    // istemciye tekrar oynatmıyor ve queryAwareness'ı (tip 3) hiç tanımıyor.
+    // Sonuç: var olan bir odaya sonradan katılan istemci, oradakileri ancak
+    // onlar kendiliğinden yenilenince görüyor — y-protocols'un kendi saati bunu
+    // ~15 saniyede bir yapıyor.
+    //
+    // Açılışta ikinci pencere birinciden 1 sn sonra bağlandığı için tam da bu
+    // duruma düşüyordu: 'write' 'watch'ı hemen görüyor, 'watch' ise 'write'ı
+    // 15 saniyeye kadar hiç görmüyordu (ölçüldü). Kendi durumumuzu daha sık
+    // duyurmak karşı tarafın bizi hızlıca görmesini sağlıyor; gönderilen şey
+    // standart bir awareness güncellemesi, sunucuda değişiklik gerektirmiyor.
+    const announceInterval = setInterval(announce, 5000)
 
     // 'status' ve 'sync' AYNI ŞEY DEĞİL (SPEC §7.2): bağlantı kurulmuş ama
     // doküman henüz senkronlanmamış olabilir. İkisini ayrı gösteriyoruz.
@@ -104,6 +123,7 @@ export function useCollab(room: string, paneName: PaneName): CollabState {
     onAwarenessChange()
 
     return () => {
+      clearInterval(announceInterval)
       provider.off('status', onStatus)
       provider.off('sync', onSync)
       awareness.off('change', onAwarenessChange)

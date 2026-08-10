@@ -7,6 +7,9 @@ dist/
 .vite/
 *.tsbuildinfo
 
+# Tooling caches
+.eslintcache
+
 # Logs
 *.log
 npm-debug.log*

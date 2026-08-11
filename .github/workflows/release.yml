@@ -1,0 +1,104 @@
+# Üç platform için kurulum dosyaları üretir ve her birini indirilebilir bir
+# workflow artifact'ı olarak bırakır. Sürüm sayfasına yükleme ELLE yapılıyor.
+#
+# Neden CI: Windows ve Linux hedefleri macOS'ta üretilemiyor (NSIS wine, deb/
+# AppImage Linux araç zinciri ister). Mac tarafı burada da imzasız kalıyor —
+# Apple Developer ID yok, bkz. electron-builder.yml'deki `identity: null` notu.
+
+name: Release build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Hiçbir şey yayınlamıyoruz; token'a yazma yetkisi gerekmiyor.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      # Bir platformun patlaması diğer ikisinin çıktısını çöpe atmasın.
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macos
+            args: --mac --arm64 --x64
+            paths: dist/*.dmg
+          - os: windows-latest
+            name: windows
+            args: --win --x64
+            paths: dist/*.exe
+          - os: ubuntu-latest
+            name: linux
+            args: --linux --x64
+            paths: |
+              dist/*.AppImage
+              dist/*.deb
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22: @types/node ^22 ve vite 7 (^20.19 || >=22.12). Yerelde 25
+      # kurulu ama o LTS değil; sürüm derlemesinde yeri yok.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Electron dist'i ve electron-builder'ın indirdiği araçlar (fpm,
+      # appimage) her koşuda yeniden inmesin. Olmayan yollar sessizce atlanıyor,
+      # o yüzden liste üç platformu birden kapsıyor.
+      - name: Cache electron / electron-builder toolsets
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~\AppData\Local\electron\Cache
+            ~\AppData\Local\electron-builder\Cache
+          key: ${{ runner.os }}-eb-${{ hashFiles('package-lock.json') }}
+          restore-keys: ${{ runner.os }}-eb-
+
+      # postinstall (electron-builder install-app-deps) burada zararsız: tek
+      # package.json olduğu için forceInstall false, rebuild() dalına giriyor ve
+      # native modül olmadığından hiçbir şey yapmıyor.
+      - run: npm ci
+
+      # typecheck + electron-vite build. Paketlemeden önce derlenmiyorsa
+      # paketlemenin de anlamı yok.
+      - run: npm run build
+
+      # --publish never ZORUNLU: tag ile tetiklenen bir koşuda
+      # GITHUB_REF_TYPE=tag olduğu için electron-builder publish'i örtük olarak
+      # "onTag" yapıyor. Yapılandırmada publish: null olduğundan hiçbir şey
+      # yüklenmezdi, ama bayrak niyeti açık ediyor ve deprecation uyarısını
+      # susturuyor.
+      #
+      # CSC_IDENTITY_AUTO_DISCOVERY=false, identity: null'ın yanında ikinci
+      # emniyet: findIdentity()'nin `security find-identity` çağırmasını
+      # engelliyor ve ortamdan gelecek bir CSC_LINK imzalamayı geri açamıyor.
+      - name: Package
+        run: npx --no-install electron-builder ${{ matrix.args }} --publish never
+        env:
+          # Tırnak ŞART: electron-builder bunu tam olarak "false" STRING'iyle
+          # karşılaştırıyor (flags.js). Tırnaksız yazarsak YAML boolean'a
+          # dönüşüyor ve doğru değere Actions'ın string'e çevirmesi sayesinde
+          # varıyoruz — o dolaylı yola güvenmeyelim.
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      # Uzantıya göre süzmek şart: dist/ içinde mac-arm64, win-unpacked,
+      # linux-unpacked gibi yüzlerce MB'lık açılmış paketler de var.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}-installers
+          path: ${{ matrix.paths }}
+          if-no-files-found: error
+          retention-days: 14

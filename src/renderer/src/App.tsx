@@ -141,6 +141,16 @@ function App(): React.JSX.Element {
           <h1 className="text-sm font-semibold text-ink">Sunucuya ulaşılamadı</h1>
           <ErrorNote>{acilisHatasi}</ErrorNote>
           {/*
+            Uygulamayı ilk kez açan biri için en muhtemel sebep bir arıza değil,
+            eksik yapılandırma: paketlenmiş sürüm geçici bir geliştirme adresiyle
+            geliyor. Sunucunun kendi metni yukarıda AYNEN duruyor (CLAUDE.md
+            kuralı); bu satır onun yerine geçmiyor, yanına bir yol gösteriyor.
+          */}
+          <p className="text-xs text-ink-muted">
+            İlk kurulum ise bu beklenen bir durum: aşağıdan kendi sunucunuzun adresini girin.
+            Kaydettiğinizde bu ekran kendini yeniden dener.
+          </p>
+          {/*
             Bu ekranın en muhtemel sebebi ADRESİN kendisi (tünel yeniden başladı
             ve yeni bir alan adı verdi). O yüzden ayar burada AÇIK başlıyor ve
             kaydedince panel kendini yeniden deniyor: adresi düzelt, giriş ekranı

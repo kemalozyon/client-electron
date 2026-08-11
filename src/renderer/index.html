@@ -27,8 +27,19 @@
 
          script-src'deki 'unsafe-inline'/'unsafe-eval': Vite dev sunucusu
          React Fast Refresh preamble'ını index.html'e satır içi <script> olarak
-         enjekte ediyor. Hedef deneyim 'npm run dev' olduğu için (SPEC_FRONT §1.3)
-         bunlara izin veriyoruz.
+         enjekte ediyor.
+
+         BU İKİSİNİ ÜRETİM İÇİN KALDIRMAYA ÇALIŞMAYIN. Üretim paketinin ikisine
+         de ihtiyacı olmadığı doğru — derlenmiş index.html'de tek bir HARİCİ
+         module script var ve bundle'da sıfır `eval(` / `new Function` geçiyor —
+         ama bu <meta> etiketi İKİ MODA birden hizmet ediyor ve dev'de o satır
+         içi preamble olmadan uygulama hiç açılmıyor. Moda göre farklı politika
+         istiyorsanız index.html'i şablonlamanız gerekir; kazanç, kazanılan
+         yerin dev'i bozma riskine değmiyor.
+
+         style-src'deki 'unsafe-inline' ise HER İKİ modda da zorunlu: CodeMirror
+         temalarını StyleModule ile çalışma zamanında <style> olarak enjekte
+         ediyor. Kaldırmak paketlenmiş uygulamada editörün biçimini bozar.
     -->
     <meta
       http-equiv="Content-Security-Policy"

@@ -174,6 +174,25 @@ export function ServerAddressField({ onChanged, defaultOpen, note }: Props): Rea
         atılır. <span className="font-mono">ws://</span> yapıştırırsanız çevrilir.
       </p>
 
+      {/*
+        Henüz bir adres KAYDEDİLMEDİYSE, ekranda duran şey uygulamayla gelen
+        geçici bir geliştirme adresi. İndirilebilir bir sürümde bu neredeyse her
+        zaman ölü: trycloudflare tüneli her yeniden başladığında yeni bir alan
+        adı veriyor. Söylemezsek ilk açılış bir çökme gibi okunuyor.
+
+        `note` prop'u değil `source` üzerinden: böyle her mount noktasında
+        doğru oluyor ve kullanıcı bir adres kaydettiği an kendiliğinden
+        kayboluyor. EDITOR_BASE_URL'den de bahsetmiyoruz — paketlenmiş bir
+        uygulama Finder'dan açıldığında launchd onu kabuk ortamı olmadan
+        başlatıyor, yani o değişken bir kullanıcı için hiç çalışmıyor.
+      */}
+      {kaynak && kaynak !== 'stored' && (
+        <p className="text-[11px] text-ink-muted">
+          Henüz bir adres kaydetmediniz. Yukarıdaki adres uygulamayla gelen geçici bir geliştirme
+          adresi ve kalıcı değil — kendi sunucunuzun adresini yazıp kaydedin.
+        </p>
+      )}
+
       {note}
 
       <p className="text-[11px] text-ink-muted">

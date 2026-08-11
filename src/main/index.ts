@@ -96,7 +96,11 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.electron')
+  // electron-builder.yml'deki appId ile AYNI olmak zorunda: Windows görev
+  // çubuğuna sabitleme ve bildirim kimliği bu ikisinin eşleşmesine bakıyor.
+  // (Şablondan 'com.electron' olarak geliyordu, appId ise com.electron.app'ti —
+  // ikisi de placeholder'dı ve birbirinden de farklıydı.)
+  electronApp.setAppUserModelId('com.eczanerapor.collabide')
 
   // Geliştirmede F12 ile DevTools, üretimde Ctrl+R'yi yoksay.
   app.on('browser-window-created', (_, window) => {

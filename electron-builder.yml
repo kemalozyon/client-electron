@@ -1,43 +1,110 @@
-appId: com.electron.app
-productName: collab-ide
+# Paketleme yapılandırması.
+#
+# Bu dosya electron-vite iskeletiyle geldi ve bir kez bile çalıştırılmamıştı.
+# Şablon varsayılanlarının dördü SESSİZCE bozuktu; aşağıda hepsi düzeltildi ve
+# her biri neden öyle olduğu yazılarak duruyor — geri alınırsa hata vermeden
+# yanlış çıktı üretirler.
+#
+# scheme.json `mac`/`nsis`/`linux` altında additionalProperties: false diyor,
+# yani buradaki bir yazım hatası uyarı değil DERLEME HATASI. İyi haber.
+
+appId: com.eczanerapor.collabide
+productName: Collab IDE
+
 directories:
   buildResources: build
+  output: dist
+
 files:
   - '!**/.vscode/*'
-  - '!src/*'
+  # '!src/*' de yeterliydi (bir dizini eleyen desen alt ağacı komple buduyor,
+  # walk() filtrelenen dizini hiç gezmiyor), ama bu hâli tartışmaya kapalı.
+  - '!src{,/**/*}'
   - '!electron.vite.config.{js,ts,mjs,cjs}'
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  # electron-builder .gitignore OKUMUYOR. Bu üçü .gitignore'da olduğu için
+  # CI'daki checkout'ta yok, ama YEREL bir build onları app.asar'a koyar.
+  - '!{CLAUDE.md,SPEC.md,SPEC_FRONT.md}'
+  - '!.claude{,/**/*}'
+
 asarUnpack:
+  # main/index.ts'teki `?asset` importu app.asar/resources/icon.png'e çıkıyor;
+  # bu satır dosyayı gerçekten diske de açıyor (yalnızca Linux'ta kullanılıyor).
   - resources/**
+
+mac:
+  target: [dmg]
+  # İMZA YOK ve bu bilinçli: Apple Developer ID yok.
+  #
+  # electron-builder 26'da ad-hoc'a otomatik düşme YOK — Identity("-") ancak
+  # açıkça istenirse üretiliyor. Gerek de yok: Electron 39'un ikilileri
+  # ZATEN ad-hoc (linker-signed) geliyor, `Info.plist=not bound` ve
+  # `Sealed Resources=none` ile. electron-builder Mach-O baytlarına dokunmuyor
+  # (electronFuses tanımsız olduğu için platformPackager erken dönüyor), yani
+  # çalıştırılabiliri yeniden adlandırmak ve Info.plist'i yazmak imzayı
+  # bozmuyor. arm64, karantina silindikten sonra açılıyor.
+  #
+  # identity: "-" YAZMAYIN: ad-hoc + varsayılan hardenedRuntime: true, bizim
+  # build/entitlements.mac.plist'imizde OLMAYAN
+  # com.apple.security.cs.disable-library-validation'ı gerektiriyor (şablonun
+  # kendi dosyasında var, ama proje kopyası onu eziyor) ve uygulama açılmıyor.
+  identity: null
+  notarize: false
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: ${name}-${version}-${arch}.${ext}
+  # extendInfo BİLEREK YOK. Şablonda tek anahtarlı map'lerden oluşan bir LİSTE
+  # olarak duruyordu; deepAssign onu dizi olarak birleştirdiği için üretilen
+  # Info.plist'e <key>0</key> ve <key>length</key> giriyor, dört usage-description
+  # anahtarının HİÇBİRİ girmiyordu. scheme.json extendInfo'ya tip kısıtı
+  # koymadığı için doğrulama da yakalamıyor. Uygulama kamera/mikrofon/Documents/
+  # Downloads kullanmadığı için doğru düzeltme silmek. Geri eklerseniz MAP yazın.
+
+dmg:
+  # ${arch} OLMADAN iki mimari AYNI dosya adına çıkıyor: arm64 build'i x64'ün
+  # üstüne yazıyor, uyarı yok (sonuçlar bir Set'e toplanıyor, dmgbuild da
+  # çıktısını eziyor). Tek DMG görüyorsanız bu satır bozulmuş demektir.
+  artifactName: ${name}-${version}-${arch}.${ext}
+  # Otomatik güncelleme yok (electron-updater bağımlılık değil) — .blockmap
+  # dosyaları elle yüklenen bir sürümde yalnızca kafa karıştırıyor.
+  writeUpdateInfo: false
+
 win:
   executableName: collab-ide
+
 nsis:
+  # BURAYA ${arch} EKLEMEYİN: NSIS istenen tüm Windows mimarileri için tek bir
+  # birleşik kurucu üretiyor, ${arch} varsa AYRICA mimari başına kurucu da
+  # üretiyor. Tek ad, tek dosya.
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
-mac:
-  entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
+  differentialPackage: false
+
 linux:
-  target:
-    - AppImage
-    - snap
-    - deb
-  maintainer: electronjs.org
-  category: Utility
+  # snap ÇIKARILDI: tek başına PATH'te hazır bir `snapcraft` ikilisi isteyen
+  # hedef o, ve ubuntu-latest'te yok. AppImage ile deb kendi araçlarını
+  # (fpm, mksquashfs) indiriyor — runner'a ek apt paketi gerekmiyor.
+  target: [AppImage, deb]
+  # AÇIKÇA yazılmak zorunda: varsayılanı productName değil appInfo.sanitizedName
+  # (collab-ide-client), yani yazmazsak ÜÇÜNCÜ bir ad ortaya çıkıyor.
+  executableName: collab-ide
+  maintainer: Kemal Özyön <kemal@eczanerapor.com>
+  category: Development
+
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-${arch}.${ext}
+
+deb:
+  artifactName: ${name}_${version}_${arch}.${ext}
+
 npmRebuild: false
-publish:
-  provider: generic
-  url: https://example.com/auto-updates
+
+# BLOĞU SİLMEK YETMİYOR, null OLMAK ZORUNDA.
+#
+# Şablon burada generic/example.com placeholder'ı taşıyordu. Silerseniz
+# getPublishConfigsForUpdateInfo .git/config'ten GitHub'ı kendisi bulup
+# artifact'ın içine app-update.yml koyuyor. null ise her yazıcı atlanıyor.
+publish: null

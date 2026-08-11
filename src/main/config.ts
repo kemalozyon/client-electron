@@ -18,7 +18,17 @@ import type { ServerConfig } from '../shared/types'
  * tarafı adresi `server:get` kanalıyla alıyor.
  */
 
-/** Hiçbir şey kayıtlı değilse ve ortam değişkeni de yoksa buraya bağlanılır. */
+/**
+ * Hiçbir şey kayıtlı değilse ve ortam değişkeni de yoksa buraya bağlanılır.
+ *
+ * GEÇİCİ BİR GELİŞTİRME ADRESİ, kalıcı bir varsayılan değil: trycloudflare
+ * tüneli her yeniden başladığında yeni bir alan adı veriyor, yani paketlenmiş
+ * bir sürümü indiren biri için bu adres neredeyse her zaman ölü olacak. Bu
+ * bilinçli: ilk açılış "Sunucuya ulaşılamadı" ekranına düşüyor ve o ekran
+ * adres alanını açık gösterip kaydedince kendini yeniden deniyor
+ * (App.tsx), ServerAddressField de kayıt yoksa bunu açıkça yazıyor.
+ * Kalıcı bir sunucu adresi olduğunda burayı güncellemek yeterli.
+ */
 const VARSAYILAN_ADRES = 'https://alcohol-invision-rfc-teach.trycloudflare.com'
 
 /**

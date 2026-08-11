@@ -9,9 +9,13 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src/renderer/src'),
+        // Main ile paylaşılan SÖZLEŞME TİPLERİ. Yalnızca `import type` ile
+        // kullanılıyor, yani derlemede siliniyor — buradan renderer bundle'ına
+        // çalışma zamanı kodu girmiyor.
+        '@shared': resolve('src/shared')
       },
-      // DİKKAT — bu üç paket tek kopyaya indirgenmek zorunda (SPEC §6.6).
+      // DİKKAT — bu üç paket tek kopyaya indirgenmek zorunda (SPEC_FRONT §2.1).
       //
       // y-codemirror.next, '@codemirror/state' ve '@codemirror/view'i peer
       // dependency olarak ister; 'codemirror' meta paketi ise kendi kopyasını

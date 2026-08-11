@@ -2,46 +2,48 @@ import { app, shell, BrowserWindow, screen } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-
-/** İki pencerenin kimliği. Renderer bunu ?pane= query parametresinden okur. */
-type PaneName = 'write' | 'watch'
-
-const PANES: PaneName[] = ['write', 'watch']
+import { EDITOR_YENILE } from '../shared/channels'
+import { ipcKur } from './ipc'
 
 /**
- * İkinci pencerenin gecikmesi (ms).
+ * TEK pencere (SPEC_FRONT §4.4).
  *
- * SİLMEYİN — bu bir batıl inanç değil, gerçek bir yarış koşulunun geçici
- * çözümü. Henüz var olmayan bir odaya aynı anda bağlanan iki istemci,
- * pycrdt-websocket'te oda oluşturma yarışını tetikliyor ve biri sessizce
- * senkronize olmadan kalıyor: iki ayrı doküman, ikisi de sapasağlam görünür,
- * hiç birleşmezler. İki BrowserWindow'u aynı tick'te açmak bunu neredeyse her
- * seferinde tetikliyor. Oda bir kez oluştuktan sonra eşzamanlı bağlanmak
- * sorunsuz. (SPEC §6.4)
+ * Eski hâlde iki BrowserWindow vardı ve kimliklerini ?pane=write / ?pane=watch
+ * ile taşıyorlardı; ikincisi de 1000 ms geciktiriliyordu. İkisi de gitti:
+ *
+ *   - ?pane= : artık pencere kimliği diye bir şey yok. Hangi dokümanı
+ *     açtığımız sunucudaki listeden seçiliyor (SPEC_FRONT §7.2).
+ *   - gecikme: o yarış koşulu pycrdt-websocket'e aitti. Yeni backend kendi oda
+ *     yöneticisini bir asyncio.Lock altında create-or-get ile işletiyor,
+ *     eşzamanlı bağlanmak sorunsuz (SPEC_FRONT §2.4). Geri koymayın.
+ *
+ * Yan yana manuel test için uygulamayı İKİ KEZ başlatın (iki ayrı süreç);
+ * tek süreçte iki pencereye dönmeyin — SPEC_FRONT §9 bunu varsayıyor.
  */
-const IKINCI_PENCERE_GECIKMESI = 1000
+const VARSAYILAN_GENISLIK = 1200
+const VARSAYILAN_YUKSEKLIK = 800
 
-function createWindow(pane: PaneName): BrowserWindow {
-  // Pencereleri yan yana koy: her biri çalışma alanının yarısı kadar.
+function createWindow(): BrowserWindow {
+  // Ekrana sığdır: küçük ekranlarda çalışma alanını taşmasın.
   const { workArea } = screen.getPrimaryDisplay()
-  const width = Math.floor(workArea.width / 2)
-  const height = workArea.height
-  const x = workArea.x + (pane === 'write' ? 0 : width)
+  const width = Math.min(VARSAYILAN_GENISLIK, workArea.width)
+  const height = Math.min(VARSAYILAN_YUKSEKLIK, workArea.height)
 
   const window = new BrowserWindow({
-    x,
-    y: workArea.y,
+    x: workArea.x + Math.floor((workArea.width - width) / 2),
+    y: workArea.y + Math.floor((workArea.height - height) / 2),
     width,
     height,
     show: false,
     autoHideMenuBar: true,
-    title: `Collab IDE — ${pane}`,
+    title: 'Collab IDE',
     backgroundColor: '#1e1e2e',
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       // Electron'un güvenli varsayılanları yeterli: renderer'ın Node'a hiç
-      // ihtiyacı yok. WebSocket zaten bir Chromium API'si. (SPEC §5.1)
+      // ihtiyacı yok. WebSocket zaten bir Chromium API'si, ayrıcalıklı olan
+      // her şey de IPC köprüsünün arkasında duracak. (SPEC_FRONT §4.4)
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false
@@ -52,26 +54,45 @@ function createWindow(pane: PaneName): BrowserWindow {
     window.show()
   })
 
+  /**
+   * Cmd/Ctrl+R'yi ELE GEÇİR.
+   *
+   * Bu tuş şu an iki farklı şekilde yanlış davranıyor:
+   *   - üretimde @electron-toolkit/utils'in watchWindowShortcuts'u onu tamamen
+   *     yutuyor (`if (!is.dev)` dalı), yani hiçbir yenileme yolu yok;
+   *   - geliştirmede yutmuyor, dolayısıyla Electron'un menüsündeki
+   *     View→Reload çalışıyor ve BÜTÜN renderer'ı yeniden yüklüyor. Bu Y.Doc'u
+   *     yok eder ve soketin henüz itemediği her şey gider. Yani kullanıcının
+   *     hazır refleksi tam da yıkıcı olan.
+   *
+   * Kesme işi main'de olmak zorunda: macOS'ta menü hızlandırıcısı sayfadaki
+   * preventDefault'a bakmıyor. before-input-event'te preventDefault ise hem
+   * menüyü hem sayfa olayını kesiyor — toolkit'in üretimde reload'ı bloke
+   * etmek için kullandığı mekanizmanın aynısı, biz dev'de de uyguluyoruz.
+   *
+   * Ne yapılacağına renderer karar veriyor: main hangi ekranda olduğumuzu
+   * bilmiyor. Editör açıksa dokümanı yeniden bağlıyor, değilse (yalnızca
+   * dev'de) sayfayı gerçekten yeniliyor.
+   */
+  window.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return
+    if (input.code !== 'KeyR' || !(input.control || input.meta)) return
+    event.preventDefault()
+    window.webContents.send(EDITOR_YENILE)
+  })
+
   window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
-  // Pencere kimliğini query parametresi olarak taşıyoruz; App.tsx bunu
-  // location.search'ten okuyup hangi pane olduğunu öğreniyor.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    window.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?pane=${pane}`)
+    window.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    window.loadFile(join(__dirname, '../renderer/index.html'), { query: { pane } })
+    window.loadFile(join(__dirname, '../renderer/index.html'))
   }
 
   return window
-}
-
-/** İki pane'i sırayla açar — aradaki gecikme yukarıdaki yarış koşulu için. */
-function createBothPanes(): void {
-  createWindow(PANES[0])
-  setTimeout(() => createWindow(PANES[1]), IKINCI_PENCERE_GECIKMESI)
 }
 
 app.whenReady().then(() => {
@@ -82,19 +103,20 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  createBothPanes()
+  // REST ve oturum main process'te yaşıyor; pencere açılmadan önce kurulsun
+  // ki renderer ilk render'da window.api'yi hazır bulsun. (SPEC_FRONT §4.1)
+  ipcKur()
 
-  // Şablondan sapma: varsayılan handler ?pane= parametresi olmayan TEK bir
-  // pencere açıyordu — kimliksiz üçüncü bir pane. Bunun yerine ikisini de,
-  // yine kademeli olarak yeniden açıyoruz.
+  createWindow()
+
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createBothPanes()
+    if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
-// Şablondan sapma: 'process.platform !== darwin' koruması kaldırıldı.
-// Bu bir doküman uygulaması değil, iki pencerelik bir demo; penceresiz kalan
-// süreç yalnızca ortalıkta öksüz dolaşır. macOS dahil her yerde çık. (SPEC §5.1)
+// Şablondan sapma: 'process.platform !== darwin' koruması bilerek yok.
+// Bu bir doküman uygulaması değil; penceresiz kalan süreç yalnızca ortalıkta
+// öksüz dolaşır. macOS dahil her yerde çık. (SPEC_FRONT §4.4)
 app.on('window-all-closed', () => {
   app.quit()
 })

@@ -39,7 +39,8 @@ export function CodeMirrorSurface({ session, language, onCursorChange }: Props):
     languageCompartmentRef.current = languageCompartment
 
     // UndoManager belirli bir Y.Text'e bağlıdır ve ondan uzun yaşayamaz;
-    // her oda için yenisi kurulur, temizlikte de yok edilir. (SPEC §8)
+    // her doküman için yenisi kurulur, temizlikte de yok edilir.
+    // (SPEC_FRONT §8)
     const undoManager = new Y.UndoManager(ytext)
 
     const view = new EditorView({
@@ -81,7 +82,9 @@ export function CodeMirrorSurface({ session, language, onCursorChange }: Props):
   // Dil değişimi: view'ı YENİDEN KURMA, sadece compartment'ı yapılandır.
   // Yeniden kurmak yCollab'ı söküp aynı Y.Text'e tekrar bağlar; tampon
   // yeniden tohumlanır ve bütün uzak imleçler düşer — repaint olması gereken
-  // şey gözle görülür bir glitch'e dönüşür. (SPEC §8)
+  // şey gözle görülür bir glitch'e dönüşür. Viewer için salt-okunurluk da
+  // adım 6'da aynı yolla, İKİNCİ bir Compartment ile gelecek — yine yeniden
+  // kurarak değil. (SPEC_FRONT §7.4)
   useEffect(() => {
     const view = viewRef.current
     const languageCompartment = languageCompartmentRef.current

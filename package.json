@@ -1,7 +1,7 @@
 {
   "name": "collab-ide-client",
   "version": "0.1.0",
-  "description": "Collaborative IDE client — two Electron editor panes over one FastAPI CRDT server",
+  "description": "Collaborative IDE client — Electron desktop editor over a FastAPI CRDT server",
   "main": "./out/main/index.js",
   "author": "",
   "homepage": "",
@@ -33,7 +33,6 @@
     "codemirror": "^6.0.2",
     "y-codemirror.next": "^0.3.5",
     "y-protocols": "^1.0.7",
-    "y-websocket": "^3.1.0",
     "yjs": "^13.6.32"
   },
   "devDependencies": {

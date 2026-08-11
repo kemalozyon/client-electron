@@ -6,17 +6,33 @@
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
 
          connect-src: websocket bağlantısına açıkça izin vermek zorundayız,
-         yoksa ws://localhost:8000/ws/... engellenir (SPEC §5.1). ws://localhost:5173
-         ise Vite'ın dev sunucusundaki HMR kanalı.
+         yoksa wss://.../ws/documents/... engellenir. 'self' Vite dev
+         sunucusunun HMR kanalını da kapsıyor.
+
+         Burada origin LİSTESİ yok, ŞEMA izni var — ve bu bir gevşetme değil,
+         zorunluluk. Sunucu adresi artık çalışma zamanında değişiyor
+         (main/config.ts): kullanıcı ayarı UI'dan giriyor, çünkü trycloudflare
+         alan adı tünel her yeniden başladığında yenileniyor. Bir <meta> CSP'sini
+         main'den GENİŞLETMEK mümkün değil — birden çok politika kısıtlayıcı
+         şekilde birleşir, yani bir başlık ancak buradakiyle KESİŞİR. Üretimde
+         index.html'i yeniden yazmak da asar'ın içine yazmak demek.
+
+         BURAYA BİR http:// YA DA https:// ŞEMASI/ORIGIN'İ GİRMEYİN
+         (SPEC_FRONT §4.1). Backend'de CORSMiddleware yok, bu yüzden REST main
+         process'te — Node'un fetch'i CORS'a tabi değil. WebSocket upgrade'i
+         zaten muaf olduğu için soket renderer'da kalabiliyor. Bu satırda bir
+         http(s) şeması belirmesi REST'in renderer'a sızdığının işareti;
+         düzeltilecek yer burası değil. Kural artık origin düzeyinde
+         gözle denetlenemediği için ŞEMA düzeyinde duruyor.
 
          script-src'deki 'unsafe-inline'/'unsafe-eval': Vite dev sunucusu
          React Fast Refresh preamble'ını index.html'e satır içi <script> olarak
-         enjekte ediyor. Hedef deneyim 'npm run dev' olduğu için (SPEC §1)
+         enjekte ediyor. Hedef deneyim 'npm run dev' olduğu için (SPEC_FRONT §1.3)
          bunlara izin veriyoruz.
     -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws://localhost:8000 ws://localhost:5173"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:"
     />
   </head>
 

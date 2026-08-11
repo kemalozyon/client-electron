@@ -2,11 +2,12 @@ import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorView } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
 import { tags as t } from '@lezer/highlight'
+import { METIN_KOYU, PRESENCE_PALETTE, kontrastMetin } from '../collab/constants'
 
 /**
  * Editörün koyu teması.
  *
- * Tema app'in sorumluluğu (SPEC §2 iş bölümü), bu yüzden hazır bir tema paketi
+ * Tema app'in sorumluluğu (SPEC_FRONT §2.1), bu yüzden hazır bir tema paketi
  * çekmek yerine elle yazıyoruz: renkler index.css'teki @theme token'larıyla
  * birebir aynı, dolayısıyla editör ile pane süslemesi tek parça görünüyor.
  */
@@ -18,8 +19,31 @@ const inkMuted = '#7f849c'
 const inkFaint = '#585b70'
 const accent = '#89b4fa'
 
+/**
+ * İmleç etiketinin yazı rengi — zemine göre.
+ *
+ * Zemin DOM'da yalnızca imlecin satır içi `style`'ında var
+ * (`background-color: #f9e2af; border-color: #f9e2af`) ve etiket onu `inherit`
+ * ediyor. CSS bir elemanın hesaplanmış zemininden yazı rengi TÜRETEMİYOR
+ * (`contrast-color()` yok, göreli renk sözdizimi de `background-color`'ı
+ * okuyamıyor), o yüzden paletin her rengi için bir kural üretiyoruz.
+ *
+ * Seçici İMLECİ hedefliyor, etiketi değil: satır içi renk orada duruyor.
+ *
+ * Bu, imleç çizimini elle yazmak DEĞİL — çizen hâlâ yCollab (CLAUDE.md §3.3).
+ * Yalnızca kütüphanenin baseTheme'indeki `color: white`ı eziyoruz; CodeMirror'da
+ * theme kuralları baseTheme'den önce geliyor, o yüzden bu yetiyor.
+ */
+const presenceKontrast = Object.fromEntries(
+  PRESENCE_PALETTE.map((renk) => [
+    `.cm-ySelectionCaret[style*="${renk}"] .cm-ySelectionInfo`,
+    { color: kontrastMetin(renk) }
+  ])
+)
+
 const baseTheme = EditorView.theme(
   {
+    ...presenceKontrast,
     '&': {
       color: ink,
       backgroundColor: surface,
@@ -60,19 +84,33 @@ const baseTheme = EditorView.theme(
     '.cm-tooltip': {
       backgroundColor: '#282a36',
       border: `1px solid ${borderSubtle}`,
+      borderRadius: '8px',
+      boxShadow: '0 8px 20px -6px rgba(0, 0, 0, 0.35)',
       color: ink
     },
     '.cm-tooltip-autocomplete > ul > li[aria-selected]': {
       backgroundColor: '#45475a',
       color: ink
     },
-    // Uzak imleçlerin üstündeki isim etiketi (y-codemirror.next çiziyor)
+    // Uzak imleçlerin üstündeki isim etiketi (y-codemirror.next çiziyor).
+    // opacity: y-codemirror.next'in kendi teması etiketi yalnızca imlecin
+    // üstüne gelindiğinde gösteriyor; kimin nerede olduğunun sürekli görünmesi
+    // daha faydalı olduğu için sabitliyoruz. Ad bir e-posta olduğu için de
+    // nowrap: sarmalanırsa etiket satırın üstünü kaplıyor.
     '.cm-ySelectionInfo': {
       fontFamily: 'inherit',
       fontSize: '10px',
       fontWeight: '600',
       padding: '1px 4px',
-      opacity: '1'
+      borderRadius: '3px 3px 3px 0',
+      whiteSpace: 'nowrap',
+      opacity: '1',
+      // Palet DIŞI bir renk için geri düşüş. SPEC_FRONT §6.4: sunucu awareness'ı
+      // doğrulamıyor, yani bir eş HERHANGİ bir rengi iddia edebilir ve o zaman
+      // yukarıdaki üretilmiş kuralların hiçbiri tutmaz. Buraya bir değer
+      // koymazsak kütüphanenin `white`ına düşerdi — düzeltmeye çalıştığımız şeyin
+      // ta kendisi.
+      color: METIN_KOYU
     }
   },
   { dark: true }

@@ -1,22 +1,21 @@
 import type { Peer } from '../collab/useCollab'
 import type { CursorPosition } from './CodeMirrorSurface'
-import { RoomSwitcher } from './RoomSwitcher'
 
 type Props = {
   peers: Peer[]
   synced: boolean
   cursor: CursorPosition
-  room: string
-  onRoomChange: (room: string) => void
 }
 
-export function StatusBar({ peers, synced, cursor, room, onRoomChange }: Props): React.JSX.Element {
+export function StatusBar({ peers, synced, cursor }: Props): React.JSX.Element {
   return (
-    <footer className="flex shrink-0 items-center gap-3 border-t border-border-subtle bg-surface-raised px-3 py-1.5 text-xs text-ink-muted">
-      {/* peers UZAK eşleri sayar; useCollab yerel istemciyi zaten çıkardı.
-          Python istemcisi (write.py) hiç awareness yayınlamaz, dolayısıyla
-          bağlıyken bile burada görünmez — bu bir hata değil, editor.py'de
-          awareness kodu yok. (SPEC §7.3) */}
+    <footer className="flex shrink-0 items-center gap-3 border-t border-border-subtle bg-surface-raised px-3 py-1.5 text-xs text-ink-muted shadow-[0_-1px_6px_rgba(0,0,0,0.15)]">
+      {/* peers UZAK eşleri, hem de KİŞİ başına sayar; useCollab yerel istemciyi
+          çıkarıyor ve aynı kişinin birden çok bağlantısını tekliyor.
+          Python istemcisi (write.py) hiç awareness yayınlamaz — editor.py'de
+          AWARENESS sabiti tanımlı ama hiç kullanılmıyor. Yani bağlıyken metni
+          senkronlar, burada görünmez ve imleç de çizmez. Bu bir hata değil.
+          (SPEC_FRONT §6.4, §9.4) */}
       <span className="tabular-nums">
         {peers.length} {peers.length === 1 ? 'peer' : 'peers'}
       </span>
@@ -24,13 +23,20 @@ export function StatusBar({ peers, synced, cursor, room, onRoomChange }: Props):
       {peers.length > 0 && (
         <span className="flex items-center gap-2">
           {peers.map((peer) => (
-            <span key={peer.clientId} className="flex items-center gap-1">
+            <span
+              key={peer.userId ?? peer.clientId}
+              className="flex min-w-0 items-center gap-1"
+              // Ad bir e-posta, yani uzun olabiliyor: şeritte kısaltıp tamamını
+              // tooltip'te veriyoruz. Kısaltmazsak imleç konumu ve senkron
+              // göstergesi şeridin dışına taşıyor.
+              title={peer.name}
+            >
               <span
-                className="h-2 w-2 rounded-full"
+                className="h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: peer.color }}
                 aria-hidden
               />
-              {peer.name}
+              <span className="max-w-[16ch] truncate">{peer.name}</span>
             </span>
           ))}
         </span>
@@ -43,15 +49,10 @@ export function StatusBar({ peers, synced, cursor, room, onRoomChange }: Props):
 
       <span className="text-ink-faint">·</span>
       {/* 'synced' bağlantıdan AYRI bir olay: soket açık olup doküman henüz
-          senkronlanmamış olabilir. (SPEC §7.2) */}
+          senkronlanmamış olabilir. İkisi ayrı gösterilmeli. (SPEC_FRONT §5.4) */}
       <span className={synced ? 'text-state-ok' : 'text-state-pending'}>
         {synced ? 'synced' : 'syncing…'}
       </span>
-
-      <div className="ml-auto">
-        {/* key={room}: oda değişince RoomSwitcher'ın taslak state'i sıfırlansın */}
-        <RoomSwitcher key={room} room={room} onRoomChange={onRoomChange} />
-      </div>
     </footer>
   )
 }

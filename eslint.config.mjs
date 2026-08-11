@@ -25,7 +25,14 @@ export default defineConfig(
     },
     rules: {
       ...eslintPluginReactHooks.configs.recommended.rules,
-      ...eslintPluginReactRefresh.configs.vite.rules
+      ...eslintPluginReactRefresh.configs.vite.rules,
+      // IPC handler'larının imzası sabit: (event, ...args). Kullanmadığımız
+      // baştaki parametreleri silmek imzayı okunmaz hâle getiriyor — alt
+      // çizgiyle "bilerek kullanılmıyor" demek daha dürüst.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }
+      ]
     }
   },
   eslintConfigPrettier

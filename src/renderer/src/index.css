@@ -6,7 +6,7 @@
 @theme {
   /* Koyu tema paleti. Bu token'lar hem Tailwind utility'lerini
      (bg-surface, text-ink gibi) hem de CodeMirror temasını besliyor —
-     editör teması app'in sorumluluğunda (SPEC §2 iş bölümü). */
+     editör teması app'in sorumluluğunda (SPEC_FRONT §2.1). */
   --color-surface: #1e1e2e;
   --color-surface-raised: #282a36;
   --color-surface-sunken: #181825;
@@ -35,6 +35,11 @@
 
   --font-mono:
     'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Vurgu rengi tonlu, yumuşak gölgeler — birincil butonlarda ve
+     focus halkalarında tutarlı bir "kalkma" hissi için. */
+  --shadow-glow: 0 8px 20px -6px color-mix(in oklch, var(--color-accent) 45%, transparent);
+  --shadow-glow-lg: 0 12px 28px -8px color-mix(in oklch, var(--color-accent) 55%, transparent);
 }
 
 html,
@@ -45,6 +50,13 @@ body,
 
 body {
   margin: 0;
+  /* Tamamen düz bir dolgu yerine hafif bir derinlik — köşelerden merkeze
+     çok az koyulaşan bir radyal geçiş, palet DEĞİŞMİYOR. */
+  background-image: radial-gradient(
+    ellipse at 50% 0%,
+    var(--color-surface-raised) 0%,
+    var(--color-surface) 60%
+  );
   background-color: var(--color-surface);
   color: var(--color-ink);
   overflow: hidden;

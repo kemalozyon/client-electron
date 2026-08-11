@@ -6,6 +6,6 @@ tsconfig.json
 tsconfig.*.json
 
 # Uygulama brief'i ve Claude notları — biçimlendirici bunları yeniden
-# akıtmasın, SPEC.md kaynak metin olarak olduğu gibi kalmalı.
-SPEC.md
+# akıtmasın, SPEC_FRONT.md kaynak metin olarak olduğu gibi kalmalı.
+SPEC_FRONT.md
 CLAUDE.md

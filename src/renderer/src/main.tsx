@@ -6,9 +6,13 @@ import App from './App'
 // StrictMode bilerek YOK.
 //
 // Geliştirmede StrictMode her efekti iki kez çalıştırır (mount → unmount →
-// mount). useCollab'ın efekti bir websocket açıp kapattığı için bu, aynı tick
-// içinde odaya iki kez bağlanıp kopmak demek — SPEC §6.4'teki oda oluşturma
-// yarışını davet eden tam da bu. Demonun bütün amacı senkronun gerçekten
-// çalıştığını göstermek olduğundan, StrictMode'un çift-mount kontrolünden
-// vazgeçiyoruz.
+// mount). useCollab'ın efekti bir Y.Doc yaratıp yok ediyor; adım 4'ten sonra
+// buna bir de soket açıp kapatmak eklenecek — yani her açılışta gereksiz bir
+// bağlan/kop turu.
+//
+// NOT: eski gerekçe pycrdt-websocket'teki oda oluşturma yarışıydı; o yarış
+// artık yok (SPEC_FRONT §2.4). Kalan gerekçe daha zayıf, sadece gürültü.
+// Efekt temizliği doğru yazıldığı için StrictMode'u açmak da güvenli olmalı;
+// açmadan önce EnvelopeProvider'ın destroy()'unun gerçekten idempotent
+// olduğunu doğrulayın.
 createRoot(document.getElementById('root')!).render(<App />)
